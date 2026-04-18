@@ -1,0 +1,9 @@
+{
+  "env": {
+    "PORT": "5001"
+  },
+  "exec": "node",
+  "ext": "js,json",
+  "watch": ["index.js", "routes/", "models/", "utils/"],
+  "delay": "1000"
+}
