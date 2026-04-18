@@ -57,7 +57,7 @@ app.use(cors({
 app.use(express.json());
 
 const PORT = process.env.PORT || 9000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/ballandboujee';
+const MONGO_URI = process.env.MONGO_URI;
 
 const mongoOptions = {
   serverSelectionTimeoutMS: 60000,
