@@ -10,7 +10,7 @@ export interface ContactFormData {
 export const contactApi = createApi({
   reducerPath: 'contactApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api',
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'https://backend.ballandboujee.com/api',
   }),
   endpoints: (builder) => ({
     submitContact: builder.mutation<{ success: boolean; message: string }, ContactFormData>({

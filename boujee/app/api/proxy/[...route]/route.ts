@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://bad-boujee-server.vercel.app/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend.ballandboujee.com/api";
 
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const url = `${API_URL}${endpoint}`;
