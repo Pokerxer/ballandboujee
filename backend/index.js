@@ -59,19 +59,24 @@ app.use(express.json());
 const PORT = process.env.PORT || 9000;
 const MONGO_URI = process.env.MONGO_URI;
 
-const mongoOptions = {
-  serverSelectionTimeoutMS: 60000,
-  socketTimeoutMS: 60000,
-};
-
 console.log('MONGO_URI:', MONGO_URI ? MONGO_URI.replace(/:[^:]+@/, ':****@') : 'not set');
 
-mongoose.connect(MONGO_URI, {
-  serverSelectionTimeoutMS: 60000,
-  socketTimeoutMS: 60000,
-})
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Cache connection for serverless (Vercel) warm reuse
+let cachedConn = global._mongooseConn || null;
+
+async function connectDB() {
+  if (cachedConn && mongoose.connection.readyState === 1) return cachedConn;
+  cachedConn = await mongoose.connect(MONGO_URI, {
+    serverSelectionTimeoutMS: 30000,
+    socketTimeoutMS: 45000,
+    maxPoolSize: 10,
+  });
+  global._mongooseConn = cachedConn;
+  console.log('Connected to MongoDB');
+  return cachedConn;
+}
+
+connectDB().catch(err => console.error('MongoDB connection error:', err));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/store/products', storeProductRoutes);
