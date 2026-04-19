@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bad-boujee-server.vercel.app';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.ballandboujee.com/api';
 
 class ApiError extends Error {
   status: number;

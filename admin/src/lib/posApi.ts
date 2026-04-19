@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bad-boujee-server.vercel.app';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.ballandboujee.com/api';
 
 function getPosToken(): string | null {
   if (typeof window === 'undefined') return null;
