@@ -25,11 +25,16 @@ interface Product {
 
 const categories = [
   { id: "all", label: "All Products" },
-  { id: "tank", label: "Tanks" },
-  { id: "tee", label: "Tees" },
-  { id: "hoodie", label: "Hoodies" },
-  { id: "shorts", label: "Shorts" },
-  { id: "accessory", label: "Accessories" },
+  { id: "Female Fashion", label: "Female Fashion" },
+  { id: "Male Fashion", label: "Male Fashion" },
+  { id: "Bags & Purses", label: "Bags & Purses" },
+  { id: "Shoes", label: "Shoes" },
+  { id: "Accessories", label: "Accessories" },
+  { id: "Perfumes", label: "Perfumes" },
+  { id: "Luxury Hair", label: "Luxury Hair" },
+  { id: "Skincare", label: "Skincare" },
+  { id: "Gift Items", label: "Gift Items" },
+  { id: "Kiddies Fashion", label: "Kiddies Fashion" },
 ];
 
 const priceRanges = [
@@ -42,10 +47,48 @@ const priceRanges = [
 
 const sortOptions = [
   { value: "newest", label: "Newest First" },
-  { value: "price-low", label: "Price: Low to High" },
-  { value: "price-high", label: "Price: High to Low" },
-  { value: "name-az", label: "Name: A-Z" },
+  { value: "price_asc", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+  { value: "popular", label: "Most Popular" },
 ];
+
+function normalizeProduct(p: any): Product {
+  const images = (p.images || []).map((img: any) => (typeof img === "string" ? img : img.url)).filter(Boolean);
+  const image = images[0] || "/placeholder.jpg";
+
+  const variants = p.variants || [];
+  const firstVariant = variants[0];
+  const price = firstVariant?.price || 0;
+  const compareAtPrice = firstVariant?.compareAtPrice || undefined;
+
+  const sizeMap = new Map<string, number>();
+  for (const v of variants) {
+    if (v.size) sizeMap.set(v.size, (sizeMap.get(v.size) || 0) + (v.stock || 0));
+  }
+  const sizes = sizeMap.size > 0
+    ? Array.from(sizeMap.entries()).map(([size, stock]) => ({ size, stock }))
+    : undefined;
+
+  const totalStock = variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0);
+  let badge: "new" | "limited" | "sold-out" | undefined;
+  if (totalStock === 0) badge = "sold-out";
+  else if (totalStock <= 5) badge = "limited";
+  else if (p.tags?.includes("new")) badge = "new";
+
+  return {
+    _id: p._id?.toString() || p.id,
+    name: p.name,
+    slug: p.slug,
+    price,
+    compareAtPrice,
+    image,
+    images,
+    badge,
+    sizes,
+    category: p.category,
+    description: p.description,
+  };
+}
 
 function FilterSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -871,8 +914,8 @@ export default function ShopPage() {
         const data = await response.json();
 
         if (data.success) {
-          setProducts(data.products);
-          setTotalPages(data.totalPages);
+          setProducts((data.products || []).map(normalizeProduct));
+          setTotalPages(data.totalPages || 1);
         }
       } catch (error) {
         console.error("Error fetching products:", error);
