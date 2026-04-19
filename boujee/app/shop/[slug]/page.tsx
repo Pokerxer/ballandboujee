@@ -18,7 +18,7 @@ interface Product {
   image: string;
   images?: string[];
   badge?: "new" | "limited" | "sold-out";
-  sizes?: { size: string; stock: number }[];
+  sizes?: { size: string; stock: number; price: number; compareAtPrice?: number }[];
   colors?: { name: string; hex: string }[];
   category: string;
 }
@@ -32,12 +32,20 @@ function normalizeProduct(p: any): Product {
   const price = firstVariant?.price || 0;
   const compareAtPrice = firstVariant?.compareAtPrice || undefined;
 
-  const sizeMap = new Map<string, number>();
+  // Deduplicate sizes: sum stock across colors, keep price from first matching variant
+  const sizeMap = new Map<string, { stock: number; price: number; compareAtPrice?: number }>();
   for (const v of variants) {
-    if (v.size) sizeMap.set(v.size, (sizeMap.get(v.size) || 0) + (v.stock || 0));
+    if (v.size) {
+      const existing = sizeMap.get(v.size);
+      if (existing) {
+        existing.stock += v.stock || 0;
+      } else {
+        sizeMap.set(v.size, { stock: v.stock || 0, price: v.price || 0, compareAtPrice: v.compareAtPrice });
+      }
+    }
   }
   const sizes = sizeMap.size > 0
-    ? Array.from(sizeMap.entries()).map(([size, stock]) => ({ size, stock }))
+    ? Array.from(sizeMap.entries()).map(([size, data]) => ({ size, ...data }))
     : undefined;
 
   const totalStock = variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0);
@@ -165,8 +173,11 @@ export default function ProductDetailPage({ params }: Props) {
   const selectedSizeData = selectedSize !== null ? product.sizes?.[selectedSize] : null;
   const isSizeAvailable = selectedSizeData ? selectedSizeData.stock > 0 : true;
   
-  const discount = product.compareAtPrice && product.compareAtPrice > 0
-    ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
+  const displayPrice = selectedSizeData?.price ?? product.price;
+  const displayCompareAtPrice = selectedSizeData?.compareAtPrice ?? product.compareAtPrice;
+
+  const discount = displayCompareAtPrice && displayCompareAtPrice > 0
+    ? Math.round(((displayCompareAtPrice - displayPrice) / displayCompareAtPrice) * 100)
     : 0;
 
   const handleAddToCart = () => {
@@ -177,7 +188,7 @@ export default function ProductDetailPage({ params }: Props) {
       id: product._id,
       name: product.name,
       slug: product.slug,
-      price: product.price,
+      price: displayPrice,
       image: product.image,
       size,
       quantity,
@@ -356,15 +367,15 @@ export default function ProductDetailPage({ params }: Props) {
 
               <div className="flex items-baseline gap-3">
                 <span className="font-body text-3xl font-bold text-primary">
-                  ₦{product.price.toLocaleString()}
+                  ₦{displayPrice.toLocaleString()}
                 </span>
-                {product.compareAtPrice && product.compareAtPrice > 0 && (
+                {displayCompareAtPrice && displayCompareAtPrice > 0 && (
                   <>
                     <span className="font-body text-xl text-accent-2 line-through">
-                      ₦{product.compareAtPrice.toLocaleString()}
+                      ₦{displayCompareAtPrice.toLocaleString()}
                     </span>
                     <span className="font-body text-sm text-danger font-medium">
-                      Save ₦{(product.compareAtPrice - product.price).toLocaleString()}
+                      Save ₦{(displayCompareAtPrice - displayPrice).toLocaleString()}
                     </span>
                   </>
                 )}
