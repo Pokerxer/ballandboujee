@@ -17,7 +17,7 @@ interface Product {
   image: string;
   images?: string[];
   badge?: "new" | "limited" | "sold-out";
-  sizes?: { size: string; stock: number }[];
+  sizes?: { size: string; stock: number; price: number; compareAtPrice?: number }[];
   colors?: { name: string; hex: string }[];
   category: string;
   description?: string;
@@ -61,12 +61,19 @@ function normalizeProduct(p: any): Product {
   const price = firstVariant?.price || 0;
   const compareAtPrice = firstVariant?.compareAtPrice || undefined;
 
-  const sizeMap = new Map<string, number>();
+  const sizeMap = new Map<string, { stock: number; price: number; compareAtPrice?: number }>();
   for (const v of variants) {
-    if (v.size) sizeMap.set(v.size, (sizeMap.get(v.size) || 0) + (v.stock || 0));
+    if (v.size) {
+      const existing = sizeMap.get(v.size);
+      if (existing) {
+        existing.stock += v.stock || 0;
+      } else {
+        sizeMap.set(v.size, { stock: v.stock || 0, price: v.price || 0, compareAtPrice: v.compareAtPrice });
+      }
+    }
   }
   const sizes = sizeMap.size > 0
-    ? Array.from(sizeMap.entries()).map(([size, stock]) => ({ size, stock }))
+    ? Array.from(sizeMap.entries()).map(([size, data]) => ({ size, ...data }))
     : undefined;
 
   const totalStock = variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0);
@@ -433,6 +440,8 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
   const hasSizes = product.sizes && product.sizes.length > 0;
   const selectedSizeData = selectedSize !== null ? product.sizes?.[selectedSize] : null;
   const isSizeAvailable = selectedSizeData ? selectedSizeData.stock > 0 : true;
+  const displayPrice = selectedSizeData?.price ?? product.price;
+  const displayCompareAtPrice = selectedSizeData?.compareAtPrice ?? product.compareAtPrice;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -444,7 +453,7 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
       id: product._id,
       name: product.name,
       slug: product.slug,
-      price: product.price,
+      price: displayPrice,
       image: product.image,
       size,
       quantity,
@@ -485,8 +494,8 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
     }
   };
 
-  const discount = product.compareAtPrice && Number(product.compareAtPrice) > 0
-    ? Math.round(((Number(product.compareAtPrice) - product.price) / Number(product.compareAtPrice)) * 100)
+  const discount = displayCompareAtPrice && displayCompareAtPrice > 0
+    ? Math.round(((displayCompareAtPrice - displayPrice) / displayCompareAtPrice) * 100)
     : 0;
 
   return (
@@ -632,9 +641,9 @@ function ProductCard({ product, index }: { product: Product; index: number }) {
             {product.name}
           </h3>
           <div className="flex items-center gap-2 mt-1">
-            <span className="font-body text-base font-bold text-primary">₦{product.price.toLocaleString()}</span>
-            {product.compareAtPrice && product.compareAtPrice > 0 && (
-              <span className="font-body text-sm text-accent-2 line-through">₦{product.compareAtPrice.toLocaleString()}</span>
+            <span className="font-body text-base font-bold text-primary">₦{displayPrice.toLocaleString()}</span>
+            {displayCompareAtPrice && displayCompareAtPrice > 0 && (
+              <span className="font-body text-sm text-accent-2 line-through">₦{displayCompareAtPrice.toLocaleString()}</span>
             )}
           </div>
         </div>
@@ -660,6 +669,8 @@ function ListProductCard({ product, index }: { product: Product; index: number }
   const hasSizes = product.sizes && product.sizes.length > 0;
   const selectedSizeData = hasSizes ? product.sizes?.[selectedSize] : null;
   const isSizeAvailable = selectedSizeData ? selectedSizeData.stock > 0 : true;
+  const displayPrice = selectedSizeData?.price ?? product.price;
+  const displayCompareAtPrice = selectedSizeData?.compareAtPrice ?? product.compareAtPrice;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -670,7 +681,7 @@ function ListProductCard({ product, index }: { product: Product; index: number }
       id: product._id,
       name: product.name,
       slug: product.slug,
-      price: product.price,
+      price: displayPrice,
       image: product.image,
       size,
       quantity,
@@ -709,8 +720,8 @@ function ListProductCard({ product, index }: { product: Product; index: number }
     }
   };
 
-  const discount = product.compareAtPrice && Number(product.compareAtPrice) > 0
-    ? Math.round(((Number(product.compareAtPrice) - product.price) / Number(product.compareAtPrice)) * 100)
+  const discount = displayCompareAtPrice && displayCompareAtPrice > 0
+    ? Math.round(((displayCompareAtPrice - displayPrice) / displayCompareAtPrice) * 100)
     : 0;
 
   return (
@@ -781,9 +792,9 @@ function ListProductCard({ product, index }: { product: Product; index: number }
               </div>
 
               <div className="flex items-center gap-2 mt-3">
-                <span className="font-body text-xl font-bold text-primary">₦{product.price.toLocaleString()}</span>
-                {product.compareAtPrice && product.compareAtPrice > 0 && (
-                  <span className="font-body text-sm text-accent-2 line-through">₦{product.compareAtPrice.toLocaleString()}</span>
+                <span className="font-body text-xl font-bold text-primary">₦{displayPrice.toLocaleString()}</span>
+                {displayCompareAtPrice && displayCompareAtPrice > 0 && (
+                  <span className="font-body text-sm text-accent-2 line-through">₦{displayCompareAtPrice.toLocaleString()}</span>
                 )}
                 {discount > 0 && (
                   <span className="font-body text-xs text-danger">-{discount}% OFF</span>
