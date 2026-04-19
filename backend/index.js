@@ -59,7 +59,8 @@ app.use(express.json());
 const PORT = process.env.PORT || 9000;
 const MONGO_URI = process.env.MONGO_URI;
 
-console.log('MONGO_URI:', MONGO_URI ? MONGO_URI.replace(/:[^:]+@/, ':****@') : 'not set');
+console.log('ENV KEYS:', Object.keys(process.env).join(', '));
+console.log('MONGO_URI:', MONGO_URI ? MONGO_URI.replace(/:[^:]+@/, ':****@') : 'NOT SET - undefined');
 
 // Cache connection for serverless (Vercel) warm reuse
 let cachedConn = global._mongooseConn || null;
