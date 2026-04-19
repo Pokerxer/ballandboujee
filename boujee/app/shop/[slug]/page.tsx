@@ -176,6 +176,11 @@ export default function ProductDetailPage({ params }: Props) {
   const displayPrice = selectedSizeData?.price ?? product.price;
   const displayCompareAtPrice = selectedSizeData?.compareAtPrice ?? product.compareAtPrice;
 
+  const allPrices = product.sizes?.map((s) => s.price) ?? [product.price];
+  const minPrice = Math.min(...allPrices);
+  const maxPrice = Math.max(...allPrices);
+  const hasPriceRange = minPrice !== maxPrice;
+
   const discount = displayCompareAtPrice && displayCompareAtPrice > 0
     ? Math.round(((displayCompareAtPrice - displayPrice) / displayCompareAtPrice) * 100)
     : 0;
@@ -365,18 +370,30 @@ export default function ProductDetailPage({ params }: Props) {
                 </h1>
               </div>
 
-              <div className="flex items-baseline gap-3">
-                <span className="font-body text-3xl font-bold text-primary">
-                  ₦{displayPrice.toLocaleString()}
-                </span>
-                {displayCompareAtPrice && displayCompareAtPrice > 0 && (
+              <div className="flex items-baseline gap-3 flex-wrap">
+                {selectedSize === null && hasPriceRange ? (
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-body text-base text-accent-2">From</span>
+                    <span className="font-body text-3xl font-bold text-primary">
+                      ₦{minPrice.toLocaleString()}
+                    </span>
+                    <span className="font-body text-base text-accent-2">— ₦{maxPrice.toLocaleString()}</span>
+                  </div>
+                ) : (
                   <>
-                    <span className="font-body text-xl text-accent-2 line-through">
-                      ₦{displayCompareAtPrice.toLocaleString()}
+                    <span className="font-body text-3xl font-bold text-primary">
+                      ₦{displayPrice.toLocaleString()}
                     </span>
-                    <span className="font-body text-sm text-danger font-medium">
-                      Save ₦{(displayCompareAtPrice - displayPrice).toLocaleString()}
-                    </span>
+                    {displayCompareAtPrice && displayCompareAtPrice > 0 && (
+                      <>
+                        <span className="font-body text-xl text-accent-2 line-through">
+                          ₦{displayCompareAtPrice.toLocaleString()}
+                        </span>
+                        <span className="font-body text-sm text-danger font-medium">
+                          Save ₦{(displayCompareAtPrice - displayPrice).toLocaleString()}
+                        </span>
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -428,7 +445,7 @@ export default function ProductDetailPage({ params }: Props) {
                         key={sizeData.size}
                         onClick={() => setSelectedSize(index)}
                         disabled={sizeData.stock === 0}
-                        className={`min-w-[48px] h-12 px-4 font-body text-sm font-medium transition-all rounded-lg ${
+                        className={`flex flex-col items-center justify-center px-4 py-2 min-w-[64px] font-body transition-all rounded-lg ${
                           selectedSize === index
                             ? "bg-accent text-background"
                             : sizeData.stock === 0
@@ -436,7 +453,12 @@ export default function ProductDetailPage({ params }: Props) {
                             : "bg-surface text-primary hover:bg-accent hover:text-background border border-accent-2/10"
                         }`}
                       >
-                        {sizeData.size}
+                        <span className="text-sm font-medium">{sizeData.size}</span>
+                        {hasPriceRange && (
+                          <span className={`text-[10px] mt-0.5 ${selectedSize === index ? "text-background/80" : "text-accent-2"}`}>
+                            ₦{(sizeData.price / 1000).toFixed(0)}k
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
