@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
+const { auth, adminOnly } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const storeProductRoutes = require('./routes/storeProducts');
 const adminProductRoutes = require('./routes/adminProducts');
