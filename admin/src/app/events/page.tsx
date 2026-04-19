@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-  Calendar, Plus, Search, Edit2, Trash2, Eye, EyeOff,
+  Calendar, Plus, Search, Edit2, Trash2, Eye,
   MapPin, Users, Clock, Globe, Star, Loader2, X, CheckCircle,
-  AlertCircle, ChevronDown, Tag,
+  AlertCircle, ChevronDown, Upload, ImageIcon,
 } from 'lucide-react';
 import { AdminLayout } from '@/components/AdminLayout';
-import { eventApi, Event } from '@/lib/api';
+import { eventApi, Event, api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 
 // ── Config ──────────────────────────────────────────────────────────
@@ -46,10 +46,31 @@ function EventModal({
 }) {
   const [form, setForm] = useState<Partial<Event>>(event ?? EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const set = (key: keyof Event, value: any) =>
     setForm(prev => ({ ...prev, [key]: value }));
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const result = await api.upload.image(file);
+      set('image', { url: result.url, publicId: result.publicId });
+    } catch (err: any) {
+      alert(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = () => {
+    set('image', undefined);
+    if (fileRef.current) fileRef.current.value = '';
+  };
 
   const addTag = () => {
     const t = tagInput.trim();
@@ -90,6 +111,55 @@ function EventModal({
           <div>
             <label className={labelClass}>Title *</label>
             <input className={inputClass} placeholder="e.g. Ball & Boujee Fashion Show 2025" value={form.title ?? ''} onChange={e => set('title', e.target.value)} required />
+          </div>
+
+          {/* Image */}
+          <div>
+            <label className={labelClass}>Event Image</label>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            {form.image?.url ? (
+              <div className="relative w-full h-48 rounded-xl overflow-hidden border border-white/10 group">
+                <img src={form.image.url} alt="Event" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white/10 rounded-lg text-white text-xs hover:bg-white/20 transition-colors"
+                  >
+                    <Upload size={12} /> Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-red-500/20 rounded-lg text-red-400 text-xs hover:bg-red-500/30 transition-colors"
+                  >
+                    <X size={12} /> Remove
+                  </button>
+                </div>
+                {uploading && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <Loader2 size={24} className="animate-spin text-[#C9A84C]" />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="w-full h-40 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-[#C9A84C]/40 hover:bg-[#C9A84C]/5 transition-colors disabled:opacity-50"
+              >
+                {uploading ? (
+                  <Loader2 size={24} className="animate-spin text-[#C9A84C]" />
+                ) : (
+                  <>
+                    <ImageIcon size={28} className="text-white/20" />
+                    <span className="text-sm text-white/40">Click to upload image</span>
+                    <span className="text-xs text-white/20">PNG, JPG, WEBP up to 10MB</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Description */}
@@ -410,7 +480,13 @@ export default function EventsPage() {
 
                 return (
                   <div key={event._id} className="flex items-center gap-4 px-5 py-4 hover:bg-white/2 transition-colors group">
-                    {/* Date block */}
+                    {/* Thumbnail */}
+                    {event.image?.url ? (
+                      <div className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-white/5">
+                        <img src={event.image.url} alt={event.title} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                    /* Date block */
                     <div className="flex-shrink-0 w-14 text-center bg-white/5 rounded-xl p-2.5">
                       <p className="text-[#C9A84C] text-xs font-medium uppercase tracking-wide">
                         {new Date(event.date).toLocaleDateString('en', { month: 'short' })}
@@ -419,6 +495,7 @@ export default function EventsPage() {
                         {new Date(event.date).getDate()}
                       </p>
                     </div>
+                    )}
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
