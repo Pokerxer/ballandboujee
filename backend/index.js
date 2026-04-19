@@ -76,7 +76,16 @@ async function connectDB() {
   return cachedConn;
 }
 
-connectDB().catch(err => console.error('MongoDB connection error:', err));
+// Middleware: ensure DB is connected before every request (critical for serverless)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('DB connection failed:', err.message);
+    res.status(503).json({ error: 'Database unavailable', detail: err.message });
+  }
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/store/products', storeProductRoutes);
