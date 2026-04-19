@@ -29,18 +29,20 @@ function normalizeProduct(p: any): Product {
 
   const variants = p.variants || [];
   const firstVariant = variants[0];
-  const price = firstVariant?.price || 0;
-  const compareAtPrice = firstVariant?.compareAtPrice || undefined;
+  const price = Number(firstVariant?.price) || 0;
+  const compareAtPrice = firstVariant?.compareAtPrice > 0 ? Number(firstVariant.compareAtPrice) : undefined;
 
   // Deduplicate sizes: sum stock across colors, keep price from first matching variant
   const sizeMap = new Map<string, { stock: number; price: number; compareAtPrice?: number }>();
   for (const v of variants) {
     if (v.size) {
       const existing = sizeMap.get(v.size);
+      const vPrice = Number(v.price) || 0;
+      const vCompare = v.compareAtPrice > 0 ? Number(v.compareAtPrice) : undefined;
       if (existing) {
-        existing.stock += v.stock || 0;
+        existing.stock += Number(v.stock) || 0;
       } else {
-        sizeMap.set(v.size, { stock: v.stock || 0, price: v.price || 0, compareAtPrice: v.compareAtPrice });
+        sizeMap.set(v.size, { stock: Number(v.stock) || 0, price: vPrice, compareAtPrice: vCompare });
       }
     }
   }
@@ -176,10 +178,12 @@ export default function ProductDetailPage({ params }: Props) {
   const displayPrice = selectedSizeData?.price ?? product.price;
   const displayCompareAtPrice = selectedSizeData?.compareAtPrice ?? product.compareAtPrice;
 
-  const allPrices = product.sizes?.map((s) => s.price) ?? [product.price];
-  const minPrice = Math.min(...allPrices);
-  const maxPrice = Math.max(...allPrices);
-  const hasPriceRange = minPrice !== maxPrice;
+  const allPrices = (product.sizes ?? [])
+    .map((s) => s.price)
+    .filter((p): p is number => typeof p === "number" && p > 0);
+  const minPrice = allPrices.length > 0 ? Math.min(...allPrices) : product.price;
+  const maxPrice = allPrices.length > 0 ? Math.max(...allPrices) : product.price;
+  const hasPriceRange = allPrices.length > 1 && minPrice !== maxPrice;
 
   const discount = displayCompareAtPrice && displayCompareAtPrice > 0
     ? Math.round(((displayCompareAtPrice - displayPrice) / displayCompareAtPrice) * 100)
@@ -454,9 +458,9 @@ export default function ProductDetailPage({ params }: Props) {
                         }`}
                       >
                         <span className="text-sm font-medium">{sizeData.size}</span>
-                        {hasPriceRange && (
+                        {hasPriceRange && sizeData.price > 0 && (
                           <span className={`text-[10px] mt-0.5 ${selectedSize === index ? "text-background/80" : "text-accent-2"}`}>
-                            ₦{(sizeData.price / 1000).toFixed(0)}k
+                            ₦{Math.round(sizeData.price / 1000)}k
                           </span>
                         )}
                       </button>

@@ -58,17 +58,19 @@ function normalizeProduct(p: any): Product {
 
   const variants = p.variants || [];
   const firstVariant = variants[0];
-  const price = firstVariant?.price || 0;
-  const compareAtPrice = firstVariant?.compareAtPrice || undefined;
+  const price = Number(firstVariant?.price) || 0;
+  const compareAtPrice = firstVariant?.compareAtPrice > 0 ? Number(firstVariant.compareAtPrice) : undefined;
 
   const sizeMap = new Map<string, { stock: number; price: number; compareAtPrice?: number }>();
   for (const v of variants) {
     if (v.size) {
       const existing = sizeMap.get(v.size);
+      const vPrice = Number(v.price) || 0;
+      const vCompare = v.compareAtPrice > 0 ? Number(v.compareAtPrice) : undefined;
       if (existing) {
-        existing.stock += v.stock || 0;
+        existing.stock += Number(v.stock) || 0;
       } else {
-        sizeMap.set(v.size, { stock: v.stock || 0, price: v.price || 0, compareAtPrice: v.compareAtPrice });
+        sizeMap.set(v.size, { stock: Number(v.stock) || 0, price: vPrice, compareAtPrice: vCompare });
       }
     }
   }
