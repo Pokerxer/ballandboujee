@@ -819,18 +819,110 @@ app.delete('/api/newsletter/:email', (req, res) => {
   res.json({ success: true, message: 'Successfully unsubscribed' });
 });
 
-// Events (placeholder — no events in DB yet)
-app.get('/api/events', (req, res) => {
-  res.json({ success: true, events: [] });
+// ── Events ────────────────────────────────────────────────────────
+const Event = require('./models/Event');
+
+function eventSlug(title) {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+// GET all events (admin: all statuses; public: published only)
+app.get('/api/events', async (req, res) => {
+  try {
+    const { status, category, upcoming, search, page = 1, limit = 20 } = req.query;
+    const query = {};
+    if (status) query.status = status;
+    else if (upcoming === 'true') { query.date = { $gte: new Date() }; query.status = 'published'; }
+    if (category) query.category = category;
+    if (search) query.title = { $regex: search, $options: 'i' };
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [events, total] = await Promise.all([
+      Event.find(query).sort({ date: 1 }).skip(skip).limit(parseInt(limit)).lean(),
+      Event.countDocuments(query),
+    ]);
+    res.json({ success: true, events, total, totalPages: Math.ceil(total / parseInt(limit)) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
-app.get('/api/events/upcoming', (req, res) => {
-  res.json({ success: true, events: [] });
+
+app.get('/api/events/upcoming', async (req, res) => {
+  try {
+    const events = await Event.find({ date: { $gte: new Date() }, status: 'published' })
+      .sort({ date: 1 }).limit(6).lean();
+    res.json({ success: true, events });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
-app.get('/api/events/featured', (req, res) => {
-  res.json({ success: true, events: [] });
+
+app.get('/api/events/featured', async (req, res) => {
+  try {
+    const events = await Event.find({ isFeatured: true, status: 'published' })
+      .sort({ date: 1 }).limit(3).lean();
+    res.json({ success: true, events });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
-app.post('/api/events/:id/register', (req, res) => {
-  res.status(404).json({ success: false, error: 'Event not found' });
+
+app.get('/api/events/:id', async (req, res) => {
+  try {
+    const event = mongoose.Types.ObjectId.isValid(req.params.id)
+      ? await Event.findById(req.params.id)
+      : await Event.findOne({ slug: req.params.id });
+    if (!event) return res.status(404).json({ success: false, error: 'Event not found' });
+    res.json({ success: true, event });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/events', auth, adminOnly, async (req, res) => {
+  try {
+    const { title, ...rest } = req.body;
+    if (!title) return res.status(400).json({ success: false, error: 'Title is required' });
+    const slug = eventSlug(title) + '-' + Date.now().toString(36);
+    const event = await Event.create({ title, slug, ...rest });
+    res.status(201).json({ success: true, event });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/events/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const event = await Event.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!event) return res.status(404).json({ success: false, error: 'Event not found' });
+    res.json({ success: true, event });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/events/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const event = await Event.findByIdAndDelete(req.params.id);
+    if (!event) return res.status(404).json({ success: false, error: 'Event not found' });
+    res.json({ success: true, message: 'Event deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/events/:id/register', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ success: false, error: 'Event not found' });
+    if (event.capacity && event.registrations >= event.capacity)
+      return res.status(400).json({ success: false, error: 'Event is fully booked' });
+    event.registrations += 1;
+    await event.save();
+    res.json({ success: true, message: 'Registered successfully', registrations: event.registrations });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Root route

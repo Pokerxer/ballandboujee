@@ -1193,3 +1193,52 @@ export interface PurchaseStats {
   byStatus: Record<'pending' | 'received' | 'cancelled', { count: number; totalCost: number }>;
   last30Days: { totalCost: number; count: number };
 }
+
+export interface Event {
+  _id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  date: string;
+  endDate?: string;
+  time?: string;
+  location?: string;
+  address?: string;
+  isOnline: boolean;
+  onlineLink?: string;
+  image?: { url: string; publicId?: string };
+  category: 'fashion-show' | 'sale' | 'launch' | 'workshop' | 'pop-up' | 'other';
+  status: 'draft' | 'published' | 'cancelled' | 'completed';
+  isFeatured: boolean;
+  capacity?: number;
+  registrations: number;
+  price: number;
+  tags?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const eventApi = {
+  getAll: (params?: { status?: string; category?: string; search?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams(params as Record<string, string>).toString();
+    return request<{ success: boolean; events: Event[]; total: number; totalPages: number }>(`/api/events?${query}`);
+  },
+
+  getById: (id: string) =>
+    request<{ success: boolean; event: Event }>(`/api/events/${id}`),
+
+  create: (data: Partial<Event>) =>
+    request<{ success: boolean; event: Event }>('/api/events', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: Partial<Event>) =>
+    request<{ success: boolean; event: Event }>(`/api/events/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    request<{ success: boolean }>(`/api/events/${id}`, { method: 'DELETE' }),
+};
