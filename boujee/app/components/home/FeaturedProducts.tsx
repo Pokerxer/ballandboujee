@@ -23,6 +23,44 @@ interface Product {
   description?: string;
 }
 
+function normalizeProduct(p: any): Product {
+  const images = (p.images || []).map((img: any) => (typeof img === 'string' ? img : img.url)).filter(Boolean);
+  const image = images[0] || '/placeholder.jpg';
+
+  const variants = p.variants || [];
+  const firstVariant = variants[0];
+  const price = firstVariant?.price || 0;
+  const compareAtPrice = firstVariant?.compareAtPrice || undefined;
+
+  // Deduplicate sizes, summing stock across all colors
+  const sizeMap = new Map<string, number>();
+  for (const v of variants) {
+    if (v.size) sizeMap.set(v.size, (sizeMap.get(v.size) || 0) + (v.stock || 0));
+  }
+  const sizes = sizeMap.size > 0
+    ? Array.from(sizeMap.entries()).map(([size, stock]) => ({ size, stock }))
+    : undefined;
+
+  const totalStock = variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0);
+  let badge: "new" | "limited" | "sold-out" | undefined;
+  if (totalStock === 0) badge = "sold-out";
+  else if (totalStock <= 5) badge = "limited";
+  else if (p.tags?.includes("new")) badge = "new";
+
+  return {
+    id: p._id?.toString() || p.id,
+    name: p.name,
+    slug: p.slug,
+    price,
+    compareAtPrice,
+    image,
+    images,
+    badge,
+    sizes,
+    description: p.description,
+  };
+}
+
 function StockIndicator({ stock }: { stock: number }) {
   if (stock === 0) return <span className="text-xs text-danger">Sold Out</span>;
   if (stock <= 3) return <span className="text-xs text-danger">Only {stock} left!</span>;
@@ -394,10 +432,10 @@ export default function FeaturedProducts() {
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
-        const res = await fetch("/api/products?action=featured");
+        const res = await fetch("/api/products?featured=true&limit=6");
         const data = await res.json();
-        if (data.success) {
-          setFeaturedProducts(data.products.slice(0, 6));
+        if (data.success && data.products?.length > 0) {
+          setFeaturedProducts(data.products.slice(0, 6).map(normalizeProduct));
         }
       } catch (err) {
         console.error("Failed to fetch featured products:", err);
@@ -405,7 +443,7 @@ export default function FeaturedProducts() {
         setLoading(false);
       }
     };
-    
+
     fetchFeatured();
   }, []);
 
@@ -466,9 +504,20 @@ export default function FeaturedProducts() {
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
-          {featuredProducts.map((product, index) => (
-            <ProductCard key={product._id} product={product} index={index} />
-          ))}
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="aspect-[3/4] bg-white/5 rounded-2xl" />
+                  <div className="mt-5 space-y-2">
+                    <div className="h-4 bg-white/5 rounded w-3/4" />
+                    <div className="h-3 bg-white/5 rounded w-1/2" />
+                    <div className="h-4 bg-white/5 rounded w-1/3 mt-2" />
+                  </div>
+                </div>
+              ))
+            : featuredProducts.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
+              ))}
         </div>
 
         <motion.div
