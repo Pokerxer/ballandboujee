@@ -23,6 +23,44 @@ interface Product {
   category: string;
 }
 
+function normalizeProduct(p: any): Product {
+  const images = (p.images || []).map((img: any) => (typeof img === "string" ? img : img.url)).filter(Boolean);
+  const image = images[0] || "/placeholder.jpg";
+
+  const variants = p.variants || [];
+  const firstVariant = variants[0];
+  const price = firstVariant?.price || 0;
+  const compareAtPrice = firstVariant?.compareAtPrice || undefined;
+
+  const sizeMap = new Map<string, number>();
+  for (const v of variants) {
+    if (v.size) sizeMap.set(v.size, (sizeMap.get(v.size) || 0) + (v.stock || 0));
+  }
+  const sizes = sizeMap.size > 0
+    ? Array.from(sizeMap.entries()).map(([size, stock]) => ({ size, stock }))
+    : undefined;
+
+  const totalStock = variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0);
+  let badge: "new" | "limited" | "sold-out" | undefined;
+  if (totalStock === 0) badge = "sold-out";
+  else if (totalStock <= 5) badge = "limited";
+  else if (p.tags?.includes("new")) badge = "new";
+
+  return {
+    _id: p._id?.toString() || p.id,
+    name: p.name,
+    slug: p.slug,
+    price,
+    compareAtPrice,
+    image,
+    images,
+    badge,
+    sizes,
+    category: p.category,
+    description: p.description,
+  };
+}
+
 type Props = {
   params: Promise<{ slug: string }>;
 };
@@ -59,12 +97,18 @@ export default function ProductDetailPage({ params }: Props) {
         const data = await res.json();
         
         if (data.success) {
-          setProduct(data.product);
-          
-          const relatedRes = await fetch(`/api/products?category=${data.product.category}&limit=4`);
+          const normalized = normalizeProduct(data.product);
+          setProduct(normalized);
+
+          const relatedRes = await fetch(`/api/products?category=${encodeURIComponent(data.product.category)}&limit=5`);
           const relatedData = await relatedRes.json();
           if (relatedData.success) {
-            setRelatedProducts(relatedData.products.filter((p: Product) => p._id !== data.product._id));
+            setRelatedProducts(
+              relatedData.products
+                .filter((p: any) => p._id?.toString() !== data.product._id?.toString())
+                .slice(0, 4)
+                .map(normalizeProduct)
+            );
           }
         } else {
           setError(true);
@@ -181,7 +225,7 @@ export default function ProductDetailPage({ params }: Props) {
     setMousePosition({ x, y });
   };
 
-  const totalImages = [product.image, ...(product.images || [])].filter(Boolean);
+  const totalImages = (product.images && product.images.length > 0 ? product.images : [product.image]).filter(Boolean);
 
   return (
     <main className="min-h-screen bg-background pt-24 pb-16">
