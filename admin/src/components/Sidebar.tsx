@@ -69,6 +69,7 @@ const navigation: NavItem[] = [
   { name: 'Orders',       href: '/orders',       icon: ShoppingCart },
   { name: 'Bookings',     href: '/bookings',     icon: Calendar },
   { name: 'Events',       href: '/events',       icon: Calendar,      roles: ['admin'] },
+  { name: 'Archive',      href: '/archive',      icon: Image,         roles: ['admin'] },
   { name: 'Customers',    href: '/customers',    icon: Users,         roles: ['admin'] },
   { name: 'Users',        href: '/users',        icon: ShieldCheck,   roles: ['admin'] },
   { name: 'Staff',        href: '/staff',        icon: UserCog,       roles: ['admin'] },

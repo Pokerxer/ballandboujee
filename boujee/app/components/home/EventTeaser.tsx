@@ -3,17 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, useInView, AnimatePresence } from "framer-motion";
-import { useAppDispatch } from "../../hooks/useStore";
-import { openCartDrawer } from "../../store/slices/cartSlice";
 
 interface EventData {
   id: string;
   title: string;
   subtitle: string;
   date: string;
-  endDate?: string;
   location: string;
-  address: string;
   price: number;
   image: string;
   tags: string[];
@@ -21,38 +17,26 @@ interface EventData {
   totalSpots: number;
 }
 
-const upcomingEvent: EventData = {
-  id: "1",
-  title: "SUMMER JAM",
-  subtitle: "3v3 Tournament",
-  date: "2026-03-20T18:00:00",
-  location: "Downtown Basketball Courts",
-  address: "123 Hoops Ave, Los Angeles, CA",
-  price: 25,
-  image: "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&q=80",
-  tags: ["3v3", "Open Run", "Prize Money"],
-  spots: 24,
-  totalSpots: 32,
-};
+function formatCategory(cat: string): string {
+  if (!cat) return "";
+  return cat.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
 
-const pastEvents = [
-  {
-    id: "2",
-    title: "WINTER CLASSIC",
-    subtitle: "5v5 League Finals",
-    date: "2026-02-15T14:00:00",
-    location: "Venice Beach Courts",
-    image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=600&q=80",
-  },
-  {
-    id: "3",
-    title: "STREET HOOPS",
-    subtitle: "1v1 Challenge",
-    date: "2026-01-28T16:00:00",
-    location: "Hollywood Basketball Center",
-    image: "https://images.unsplash.com/photo-1519861531473-92002639313cc?w=600&q=80",
-  },
-];
+function normalizeEvent(e: any): EventData {
+  const spots = e.capacity ? Math.max(0, e.capacity - (e.registrations ?? 0)) : 0;
+  return {
+    id: e._id ?? e.id,
+    title: e.title ?? "",
+    subtitle: e.description ? e.description.slice(0, 80) : formatCategory(e.category),
+    date: e.date ? new Date(e.date).toISOString() : "",
+    location: e.location ?? "",
+    price: Number(e.price) || 0,
+    image: e.image?.url ?? e.image ?? "",
+    tags: Array.isArray(e.tags) ? e.tags : [],
+    spots,
+    totalSpots: e.capacity ?? 0,
+  };
+}
 
 function FlipCard({ value, label }: { value: number; label: string }) {
   return (
@@ -139,89 +123,51 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
   );
 }
 
-function EventCard({ event, isUpcoming = true }: { event: EventData | typeof pastEvents[0]; isUpcoming?: boolean }) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-  const dispatch = useAppDispatch();
-  const [isRegistering, setIsRegistering] = useState(false);
-
-  const handleRegister = () => {
-    dispatch(openCartDrawer());
-  };
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className={`group relative overflow-hidden rounded-2xl ${isUpcoming ? 'col-span-full' : ''}`}
-    >
-      <div className="relative aspect-[21/9] md:aspect-[3/1] overflow-hidden">
-        <div 
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-          style={{ backgroundImage: `url('${('image' in event ? event.image : '')}')` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-background/30" />
-        
-        {!isUpcoming && (
-          <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px]" />
-        )}
-
-        <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end">
-          <div className="flex items-start justify-between">
-            <div>
-              {!isUpcoming && (
-                <span className="inline-block font-body text-[10px] uppercase tracking-wider px-2 py-1 bg-accent/20 text-accent mb-3">
-                  Completed
-                </span>
-              )}
-              <h3 className="font-display text-3xl md:text-5xl text-primary group-hover:text-accent transition-colors">
-                {event.title}
-              </h3>
-              {'subtitle' in event && (
-                <p className="font-body text-accent-2 mt-1">{event.subtitle}</p>
-              )}
-            </div>
-
-            {isUpcoming && 'price' in event && (
-              <div className="text-right">
-                <span className="font-display text-3xl md:text-4xl text-accent">₦{event.price?.toLocaleString()}</span>
-                <p className="font-body text-[10px] text-accent-2 uppercase">Per Team</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {isUpcoming && 'spots' in event && (
-          <div className="absolute top-4 right-4">
-            <div className="bg-background/80 backdrop-blur-sm rounded-lg px-3 py-2">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                <span className="font-body text-xs text-accent-2 uppercase">Spots Left</span>
-              </div>
-              <div className="w-20 h-1.5 bg-card rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(event.spots / event.totalSpots) * 100}%` }}
-                  transition={{ duration: 1, delay: 0.5 }}
-                  className="h-full bg-accent rounded-full"
-                />
-              </div>
-              <p className="font-body text-[10px] text-accent-2 mt-1">{event.spots}/{event.totalSpots} teams</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
 export default function EventTeaser() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const [upcomingEvents, setUpcomingEvents] = useState<EventData[]>([]);
+  const [pastEvents, setPastEvents] = useState<EventData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const [upRes, pastRes] = await Promise.all([
+          fetch("/api/events?type=upcoming"),
+          fetch("/api/events?status=completed"),
+        ]);
+        const upData = await upRes.json();
+        const pastData = await pastRes.json();
+
+        const upList = Array.isArray(upData) ? upData : (upData.events ?? []);
+        const pastList = Array.isArray(pastData) ? pastData : (pastData.events ?? []);
+
+        setUpcomingEvents(upList.map(normalizeEvent));
+        setPastEvents(pastList.map(normalizeEvent));
+      } catch {
+        // silently fail — section simply stays empty
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEvents();
+  }, []);
+
+  const upcomingEvent = upcomingEvents[0] ?? null;
+
+  if (loading) {
+    return (
+      <section className="py-20 md:py-32 px-4 bg-surface relative overflow-hidden">
+        <div className="max-w-7xl mx-auto flex justify-center items-center py-20">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        </div>
+      </section>
+    );
+  }
+
+  if (!upcomingEvent && pastEvents.length === 0) return null;
 
   return (
     <section ref={ref} className="py-20 md:py-32 px-4 bg-surface relative overflow-hidden">
@@ -231,21 +177,21 @@ export default function EventTeaser() {
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7 }}
           className="text-center mb-12"
         >
           <div className="inline-flex items-center gap-3 px-4 py-1.5 border border-accent/30 rounded-full mb-4">
-            <motion.span 
+            <motion.span
               animate={{ opacity: [1, 0.5, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
               className="w-2 h-2 rounded-full bg-accent"
             />
             <span className="font-body text-xs uppercase tracking-widest text-accent">Live Events</span>
           </div>
-          
+
           <h2 className="font-display text-5xl md:text-7xl lg:text-8xl text-primary">
             THE RUNS
           </h2>
@@ -289,95 +235,148 @@ export default function EventTeaser() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-8"
             >
-              <EventCard event={upcomingEvent} isUpcoming />
-
-              <motion.div 
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="bg-card border border-accent/10 rounded-2xl p-6 md:p-10"
-              >
-                <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-3">
-                      <motion.span 
-                        animate={{ scale: [1, 1.2, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="w-2 h-2 rounded-full bg-accent"
-                      />
-                      <span className="font-body text-xs uppercase tracking-wider text-accent">
-                        Coming Up
-                      </span>
-                    </div>
-                    
-                    <h3 className="font-display text-3xl md:text-5xl lg:text-6xl text-primary leading-tight">
-                      {upcomingEvent.title}
-                    </h3>
-                    
-                    <p className="font-body text-accent-2 text-lg">{upcomingEvent.subtitle}</p>
-                    
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-center gap-3 text-accent-2">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                          <line x1="16" y1="2" x2="16" y2="6" />
-                          <line x1="8" y1="2" x2="8" y2="6" />
-                          <line x1="3" y1="10" x2="21" y2="10" />
-                        </svg>
-                        <span className="font-body">
-                          {new Date(upcomingEvent.date).toLocaleDateString("en-US", { 
-                            weekday: "long", 
-                            year: "numeric", 
-                            month: "long", 
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit"
-                          })}
-                        </span>
+              {upcomingEvent ? (
+                <>
+                  {/* Image card */}
+                  <div className="group relative overflow-hidden rounded-2xl col-span-full">
+                    <div className="relative aspect-[21/9] md:aspect-[3/1] overflow-hidden">
+                      {upcomingEvent.image ? (
+                        <div
+                          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                          style={{ backgroundImage: `url('${upcomingEvent.image}')` }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-card" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-background/30" />
+                      <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end">
+                        <h3 className="font-display text-3xl md:text-5xl text-primary group-hover:text-accent transition-colors">
+                          {upcomingEvent.title}
+                        </h3>
+                        {upcomingEvent.subtitle && (
+                          <p className="font-body text-accent-2 mt-1">{upcomingEvent.subtitle}</p>
+                        )}
                       </div>
-                      <div className="flex items-center gap-3 text-accent-2">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                        <span className="font-body">{upcomingEvent.location}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {upcomingEvent.tags.map((tag) => (
-                        <span 
-                          key={tag}
-                          className="font-body text-[10px] uppercase tracking-wider px-3 py-1.5 bg-background border border-accent-2/20 text-accent-2"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+                      {upcomingEvent.totalSpots > 0 && (
+                        <div className="absolute top-4 right-4">
+                          <div className="bg-background/80 backdrop-blur-sm rounded-lg px-3 py-2">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                              <span className="font-body text-xs text-accent-2 uppercase">Spots Left</span>
+                            </div>
+                            <div className="w-20 h-1.5 bg-card rounded-full overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(upcomingEvent.spots / upcomingEvent.totalSpots) * 100}%` }}
+                                transition={{ duration: 1, delay: 0.5 }}
+                                className="h-full bg-accent rounded-full"
+                              />
+                            </div>
+                            <p className="font-body text-[10px] text-accent-2 mt-1">
+                              {upcomingEvent.spots}/{upcomingEvent.totalSpots}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-center lg:items-end">
-                    <CountdownTimer targetDate={upcomingEvent.date} />
-                    
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="mt-8"
-                    >
-                      <button 
-                        onClick={() => dispatch(openCartDrawer())}
-                        className="font-body text-sm font-semibold uppercase tracking-wider px-10 py-4 bg-accent text-background hover:bg-accent/90 transition-colors inline-block rounded-xl"
-                      >
-                        Register Now
-                      </button>
-                    </motion.div>
-                    
-                    <p className="font-body text-xs text-accent-2 mt-4">
-                      ₦{upcomingEvent.price?.toLocaleString()} per team • {upcomingEvent.spots} spots left
-                    </p>
-                  </div>
+                  {/* Details card */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="bg-card border border-accent/10 rounded-2xl p-6 md:p-10"
+                  >
+                    <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                          <motion.span
+                            animate={{ scale: [1, 1.2, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="w-2 h-2 rounded-full bg-accent"
+                          />
+                          <span className="font-body text-xs uppercase tracking-wider text-accent">Coming Up</span>
+                        </div>
+
+                        <h3 className="font-display text-3xl md:text-5xl lg:text-6xl text-primary leading-tight">
+                          {upcomingEvent.title}
+                        </h3>
+
+                        {upcomingEvent.subtitle && (
+                          <p className="font-body text-accent-2 text-lg">{upcomingEvent.subtitle}</p>
+                        )}
+
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center gap-3 text-accent-2">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                              <line x1="16" y1="2" x2="16" y2="6" />
+                              <line x1="8" y1="2" x2="8" y2="6" />
+                              <line x1="3" y1="10" x2="21" y2="10" />
+                            </svg>
+                            <span className="font-body">
+                              {new Date(upcomingEvent.date).toLocaleDateString("en-US", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </span>
+                          </div>
+                          {upcomingEvent.location && (
+                            <div className="flex items-center gap-3 text-accent-2">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                <circle cx="12" cy="10" r="3" />
+                              </svg>
+                              <span className="font-body">{upcomingEvent.location}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {upcomingEvent.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {upcomingEvent.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="font-body text-[10px] uppercase tracking-wider px-3 py-1.5 bg-background border border-accent-2/20 text-accent-2"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col items-center lg:items-end">
+                        <CountdownTimer targetDate={upcomingEvent.date} />
+
+                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="mt-8">
+                          <Link
+                            href="/events"
+                            className="font-body text-sm font-semibold uppercase tracking-wider px-10 py-4 bg-accent text-background hover:bg-accent/90 transition-colors inline-block rounded-xl"
+                          >
+                            Register Now
+                          </Link>
+                        </motion.div>
+
+                        {upcomingEvent.price > 0 && (
+                          <p className="font-body text-xs text-accent-2 mt-4">
+                            ₦{upcomingEvent.price.toLocaleString()} entry
+                            {upcomingEvent.totalSpots > 0 && ` • ${upcomingEvent.spots} spots left`}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="font-body text-accent-2">No upcoming events at the moment.</p>
+                  <p className="font-body text-xs text-accent-2/60 mt-2">Check back soon!</p>
                 </div>
-              </motion.div>
+              )}
             </motion.div>
           ) : (
             <motion.div
@@ -387,9 +386,46 @@ export default function EventTeaser() {
               exit={{ opacity: 0, y: -20 }}
               className="grid md:grid-cols-2 gap-6"
             >
-              {pastEvents.map((event, index) => (
-                <EventCard key={event.id} event={event} isUpcoming={false} />
-              ))}
+              {pastEvents.length === 0 ? (
+                <div className="col-span-2 text-center py-12">
+                  <p className="font-body text-accent-2">No past events yet.</p>
+                </div>
+              ) : (
+                pastEvents.slice(0, 4).map((event) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="group relative overflow-hidden rounded-2xl"
+                  >
+                    <div className="relative aspect-[21/9] md:aspect-[3/1] overflow-hidden">
+                      {event.image ? (
+                        <div
+                          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                          style={{ backgroundImage: `url('${event.image}')` }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-card" />
+                      )}
+                      <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px]" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-background/30" />
+                      <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end">
+                        <span className="inline-block font-body text-[10px] uppercase tracking-wider px-2 py-1 bg-accent/20 text-accent mb-3 w-fit">
+                          Completed
+                        </span>
+                        <h3 className="font-display text-3xl md:text-5xl text-primary group-hover:text-accent transition-colors">
+                          {event.title}
+                        </h3>
+                        {event.subtitle && (
+                          <p className="font-body text-accent-2 mt-1">{event.subtitle}</p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -400,7 +436,7 @@ export default function EventTeaser() {
           viewport={{ once: true }}
           className="text-center mt-12"
         >
-          <Link 
+          <Link
             href="/events"
             className="inline-flex items-center gap-3 font-body text-sm uppercase tracking-wider px-8 py-4 border border-accent/30 text-primary hover:bg-accent hover:border-accent hover:text-background transition-all rounded-full"
           >

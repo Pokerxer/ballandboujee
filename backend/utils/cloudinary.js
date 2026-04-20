@@ -10,7 +10,7 @@ function configure() {
   });
 }
 
-async function uploadImage(filePath, folder = 'kentaz/products') {
+async function uploadImage(filePath, folder = 'ballandboujee/uploads') {
   configure();
   try {
     const result = await cloudinary.uploader.upload(filePath, {

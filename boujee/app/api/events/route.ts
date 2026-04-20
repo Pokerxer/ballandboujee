@@ -9,7 +9,14 @@ export async function GET(request: Request) {
 
     let endpoint = "/events";
     if (type === "upcoming") endpoint = "/events/upcoming";
-    if (type === "featured") endpoint = "/events/featured";
+    else if (type === "featured") endpoint = "/events/featured";
+    else {
+      // forward remaining params to /events
+      const forwarded = new URLSearchParams();
+      searchParams.forEach((v, k) => { if (k !== "type") forwarded.set(k, v); });
+      const qs = forwarded.toString();
+      if (qs) endpoint = `/events?${qs}`;
+    }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
       headers: { "Content-Type": "application/json" },

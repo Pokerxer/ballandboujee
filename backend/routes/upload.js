@@ -25,7 +25,7 @@ const upload = multer({
 router.post('/', auth, adminOnly, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
-    const result = await uploadImage(req.file.path, 'kentaz/products');
+    const result = await uploadImage(req.file.path, 'ballandboujee/products');
     res.json({ url: result.url, publicId: result.publicId });
   } catch (err) {
     res.status(500).json({ error: err.message });

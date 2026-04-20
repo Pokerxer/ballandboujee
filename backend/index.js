@@ -125,6 +125,72 @@ app.use('/api/admin/heroes', heroRoutes);
 app.use('/api/admin/reviews', adminReviewsRoutes);
 app.use('/api/admin/wishlists', adminWishlistsRoutes);
 
+// ── Archive (Gallery) ─────────────────────────────────────────────────────
+const Archive = require('./models/Archive');
+
+app.get('/api/archive', async (req, res) => {
+  try {
+    const { status, category, featured, search, page = 1, limit = 50 } = req.query;
+    const filter = {};
+    if (status)   filter.status   = status;
+    if (category && category !== 'all') filter.category = category;
+    if (featured === 'true') filter.featured = true;
+    if (search)   filter.title = { $regex: search, $options: 'i' };
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [items, total] = await Promise.all([
+      Archive.find(filter).sort({ date: -1 }).skip(skip).limit(Number(limit)),
+      Archive.countDocuments(filter),
+    ]);
+
+    // Return distinct categories for filter UI
+    const categories = await Archive.distinct('category', { status: 'published' });
+
+    res.json({ success: true, items, total, totalPages: Math.ceil(total / Number(limit)), categories });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/archive/:id', async (req, res) => {
+  try {
+    const item = await Archive.findById(req.params.id);
+    if (!item) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, item });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/archive', auth, adminOnly, async (req, res) => {
+  try {
+    const item = await Archive.create(req.body);
+    res.status(201).json({ success: true, item });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/archive/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const item = await Archive.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!item) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, item });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/archive/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const item = await Archive.findByIdAndDelete(req.params.id);
+    if (!item) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/seed/products', async (req, res) => {
   try {
     const products = req.body.products;

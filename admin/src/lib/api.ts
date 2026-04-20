@@ -1218,6 +1218,48 @@ export interface Event {
   updatedAt: string;
 }
 
+export interface ArchiveItem {
+  _id: string;
+  title: string;
+  url: string;
+  publicId?: string;
+  type: 'photo' | 'video';
+  category: string;
+  date: string;
+  photographer: string;
+  caption?: string;
+  featured: boolean;
+  status: 'published' | 'draft';
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const archiveApi = {
+  getAll: (params?: { status?: string; category?: string; search?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams(params as Record<string, string>).toString();
+    return request<{ success: boolean; items: ArchiveItem[]; total: number; totalPages: number; categories: string[] }>(`/api/archive?${query}`);
+  },
+
+  getById: (id: string) =>
+    request<{ success: boolean; item: ArchiveItem }>(`/api/archive/${id}`),
+
+  create: (data: Partial<ArchiveItem>) =>
+    request<{ success: boolean; item: ArchiveItem }>('/api/archive', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: Partial<ArchiveItem>) =>
+    request<{ success: boolean; item: ArchiveItem }>(`/api/archive/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    request<{ success: boolean }>(`/api/archive/${id}`, { method: 'DELETE' }),
+};
+
 export const eventApi = {
   getAll: (params?: { status?: string; category?: string; search?: string; page?: number; limit?: number }) => {
     const query = new URLSearchParams(params as Record<string, string>).toString();
