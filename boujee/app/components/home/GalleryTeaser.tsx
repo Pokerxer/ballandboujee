@@ -3,47 +3,60 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useInView, AnimatePresence } from "framer-motion";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
+
+const BACKEND = process.env.NEXT_PUBLIC_API_URL || "https://backend.ballandboujee.com/api";
 
 interface GalleryItem {
   id: string;
   src: string;
   alt: string;
   type: "photo" | "video";
-  title?: string;
+  title: string;
   category: string;
 }
 
-const galleryItems: GalleryItem[] = [
-  { id: "1", src: "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&q=80", alt: "Basketball court", type: "photo", category: "Events" },
-  { id: "2", src: "https://images.unsplash.com/photo-1519861531473-92002639313cc?w=600&q=80", alt: "Street basketball", type: "photo", category: "Action" },
-  { id: "3", src: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=600&q=80", alt: "Basketball game", type: "photo", category: "Games" },
-  { id: "4", src: "https://images.unsplash.com/photo-1504450758481-7338eba7524a?w=600&q=80", alt: "Hoops", type: "photo", category: "Action" },
-  { id: "5", src: "https://images.unsplash.com/photo-1545389336-cf090694435e?w=600&q=80", alt: "Street style", type: "photo", category: "Fashion" },
-  { id: "6", src: "https://images.unsplash.com/photo-1517927033932-b3d18e61fb3a?w=600&q=80", alt: "Basketball player", type: "photo", category: "Players" },
-];
+function normalizeItem(raw: any): GalleryItem {
+  return {
+    id: raw._id || raw.id || String(Math.random()),
+    src: raw.url || raw.src || "",
+    alt: raw.caption || raw.title || "",
+    type: raw.type === "video" ? "video" : "photo",
+    title: raw.title || "",
+    category: raw.category || "Events",
+  };
+}
 
-const categories = ["All", "Events", "Action", "Games", "Fashion", "Players"];
-
-function Lightbox({ 
-  items, 
-  currentIndex, 
-  onClose, 
-  onNext, 
-  onPrev 
-}: { 
-  items: GalleryItem[]; 
-  currentIndex: number; 
+function Lightbox({
+  items,
+  currentIndex,
+  onClose,
+  onNext,
+  onPrev,
+}: {
+  items: GalleryItem[];
+  currentIndex: number;
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
 }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") onNext();
+      if (e.key === "ArrowLeft") onPrev();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose, onNext, onPrev]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-background/98 backdrop-blur-lg flex items-center justify-center"
+      onClick={onClose}
     >
       <button
         onClick={onClose}
@@ -55,7 +68,7 @@ function Lightbox({
       </button>
 
       <button
-        onClick={onPrev}
+        onClick={(e) => { e.stopPropagation(); onPrev(); }}
         className="absolute left-4 md:left-8 z-10 w-12 h-12 rounded-full bg-card flex items-center justify-center text-primary hover:bg-accent hover:text-background transition-colors"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -64,7 +77,7 @@ function Lightbox({
       </button>
 
       <button
-        onClick={onNext}
+        onClick={(e) => { e.stopPropagation(); onNext(); }}
         className="absolute right-4 md:right-8 z-10 w-12 h-12 rounded-full bg-card flex items-center justify-center text-primary hover:bg-accent hover:text-background transition-colors"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -72,35 +85,37 @@ function Lightbox({
         </svg>
       </button>
 
-      <motion.div
-        key={currentIndex}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        transition={{ type: "spring", damping: 25 }}
-        className="relative max-w-5xl w-full mx-4 aspect-video"
-      >
-        <Image
-          src={items[currentIndex].src}
-          alt={items[currentIndex].alt}
-          fill
-          className="object-contain"
-          priority
-        />
-        
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background to-transparent">
-          <p className="font-body text-sm text-accent-2">{items[currentIndex].alt}</p>
-          <p className="font-body text-xs text-accent">{items[currentIndex].category}</p>
-        </div>
-      </motion.div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentIndex}
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.92 }}
+          transition={{ type: "spring", damping: 25 }}
+          className="relative max-w-5xl w-full mx-20 aspect-video"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Image
+            src={items[currentIndex].src}
+            alt={items[currentIndex].alt}
+            fill
+            className="object-contain"
+            priority
+          />
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background to-transparent">
+            <p className="font-body text-sm text-accent-2">{items[currentIndex].title}</p>
+            <p className="font-body text-xs text-accent">{items[currentIndex].category}</p>
+          </div>
+        </motion.div>
+      </AnimatePresence>
 
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2">
         {items.map((_, index) => (
           <button
             key={index}
-            onClick={() => index !== currentIndex && (index > currentIndex ? onNext() : onPrev())}
-            className={`w-2 h-2 rounded-full transition-all ${
-              index === currentIndex ? "w-8 bg-accent" : "bg-accent-2/30 hover:bg-accent-2/50"
+            onClick={(e) => { e.stopPropagation(); if (index !== currentIndex) index > currentIndex ? onNext() : onPrev(); }}
+            className={`h-1.5 rounded-full transition-all ${
+              index === currentIndex ? "w-8 bg-accent" : "w-2 bg-accent-2/30 hover:bg-accent-2/50"
             }`}
           />
         ))}
@@ -127,7 +142,7 @@ function GalleryCard({ item, index, onClick }: { item: GalleryItem; index: numbe
             className="object-cover transition-all duration-700 group-hover:scale-110"
             sizes="(max-width: 768px) 50vw, 25vw"
           />
-          
+
           <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
 
           {item.type === "video" && (
@@ -145,13 +160,10 @@ function GalleryCard({ item, index, onClick }: { item: GalleryItem; index: numbe
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
-            whileHover={{ opacity: 1, y: 0 }}
             className="absolute inset-x-0 bottom-0 p-4 opacity-0 group-hover:opacity-100 transition-all duration-300"
           >
             <div className="flex items-center justify-between">
-              <span className="font-body text-xs text-primary bg-accent px-3 py-1">
-                View
-              </span>
+              <span className="font-body text-xs text-primary bg-accent px-3 py-1">View</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                 <circle cx="12" cy="12" r="3" />
@@ -173,23 +185,48 @@ function GalleryCard({ item, index, onClick }: { item: GalleryItem; index: numbe
 export default function GalleryTeaser() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [allItems, setAllItems] = useState<GalleryItem[]>([]);
+  const [categories, setCategories] = useState<string[]>(["All"]);
   const [filter, setFilter] = useState("All");
+  const [loading, setLoading] = useState(true);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  const filteredItems = filter === "All" 
-    ? galleryItems 
-    : galleryItems.filter(item => item.category === filter);
+  const fetchItems = useCallback(async () => {
+    setLoading(true);
+    const urls = [
+      "/api/archive?status=published&limit=12",
+      `${BACKEND}/archive?status=published&limit=12`,
+    ];
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const items: GalleryItem[] = Array.isArray(data.items) ? data.items.map(normalizeItem) : [];
+        if (items.length === 0 && !data.success) continue;
+        setAllItems(items);
+        const cats = Array.isArray(data.categories) ? data.categories : [];
+        setCategories(["All", ...cats]);
+        setLoading(false);
+        return;
+      } catch {
+        continue;
+      }
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  const filteredItems = filter === "All"
+    ? allItems.slice(0, 6)
+    : allItems.filter((i) => i.category === filter).slice(0, 6);
 
   const handleNext = () => {
-    if (lightboxIndex !== null) {
-      setLightboxIndex((lightboxIndex + 1) % filteredItems.length);
-    }
+    if (lightboxIndex !== null) setLightboxIndex((lightboxIndex + 1) % filteredItems.length);
   };
-
   const handlePrev = () => {
-    if (lightboxIndex !== null) {
-      setLightboxIndex((lightboxIndex - 1 + filteredItems.length) % filteredItems.length);
-    }
+    if (lightboxIndex !== null) setLightboxIndex((lightboxIndex - 1 + filteredItems.length) % filteredItems.length);
   };
 
   return (
@@ -200,89 +237,86 @@ export default function GalleryTeaser() {
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7 }}
           className="text-center mb-12"
         >
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={isInView ? { opacity: 1 } : {}}
             transition={{ delay: 0.2 }}
             className="flex items-center justify-center gap-3 mb-3"
           >
-            <motion.span 
+            <motion.span
               animate={{ opacity: [1, 0.5, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
               className="w-2 h-2 rounded-full bg-accent"
             />
             <span className="font-body text-xs uppercase tracking-[0.2em] text-accent">Visual Stories</span>
           </motion.div>
-          
-          <h2 className="font-display text-5xl md:text-7xl lg:text-8xl text-primary">
-            THE ARCHIVE
-          </h2>
+
+          <h2 className="font-display text-5xl md:text-7xl lg:text-8xl text-primary">THE ARCHIVE</h2>
           <p className="font-body text-accent-2 mt-2">Capturing the culture</p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ delay: 0.3 }}
-          className="flex flex-wrap justify-center gap-2 mb-10"
-        >
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setFilter(category)}
-              className={`relative px-4 py-2 font-body text-xs uppercase tracking-wider transition-colors ${
-                filter === category 
-                  ? "text-background" 
-                  : "text-accent-2 hover:text-primary"
-              }`}
-            >
-              {filter === category && (
-                <motion.div
-                  layoutId="categoryFilter"
-                  className="absolute inset-0 bg-accent rounded-full"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10">{category}</span>
-            </button>
-          ))}
-        </motion.div>
-
-        <AnimatePresence mode="wait">
+        {!loading && categories.length > 1 && (
           <motion.div
-            key={filter}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: 0.3 }}
+            className="flex flex-wrap justify-center gap-2 mb-10"
           >
-            {filteredItems.map((item, index) => (
-              <div 
-                key={item.id}
-                className={index === 0 ? "col-span-2 row-span-2" : ""}
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setFilter(category)}
+                className={`relative px-4 py-2 font-body text-xs uppercase tracking-wider transition-colors ${
+                  filter === category ? "text-background" : "text-accent-2 hover:text-primary"
+                }`}
               >
-                <GalleryCard 
-                  item={item} 
-                  index={index} 
-                  onClick={() => setLightboxIndex(index)} 
-                />
-              </div>
+                {filter === category && (
+                  <motion.div
+                    layoutId="teaserCategoryFilter"
+                    className="absolute inset-0 bg-accent rounded-full"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{category}</span>
+              </button>
             ))}
           </motion.div>
-        </AnimatePresence>
+        )}
 
-        {filteredItems.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-20"
-          >
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={`animate-pulse ${i === 0 ? "col-span-2 row-span-2" : ""}`}>
+                <div className="aspect-square bg-white/5 rounded-2xl" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={filter}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4"
+            >
+              {filteredItems.map((item, index) => (
+                <div key={item.id} className={index === 0 ? "col-span-2 row-span-2" : ""}>
+                  <GalleryCard item={item} index={index} onClick={() => setLightboxIndex(index)} />
+                </div>
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        )}
+
+        {!loading && filteredItems.length === 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
             <p className="font-body text-accent-2">No items in this category yet.</p>
           </motion.div>
         )}
@@ -293,15 +327,12 @@ export default function GalleryTeaser() {
           viewport={{ once: true }}
           className="text-center mt-12"
         >
-          <Link 
+          <Link
             href="/gallery"
             className="group inline-flex items-center gap-3 font-body text-sm uppercase tracking-wider px-8 py-4 border border-accent/30 text-primary hover:bg-accent hover:border-accent hover:text-background transition-all rounded-full"
           >
             <span>View Full Archive</span>
-            <motion.span
-              animate={{ x: [0, 5, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            >
+            <motion.span animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M7 17L17 7M17 7H7M17 7v10" />
               </svg>

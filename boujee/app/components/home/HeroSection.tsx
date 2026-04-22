@@ -25,7 +25,7 @@ const slides: Slide[] = [
       { text: "Upcoming Events", href: "/events", primary: false },
       { text: "Join Community", href: "/contact", primary: false },
     ],
-    image: "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=1920&q=80",
+    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1920&q=80",
   },
   {
     id: 2,
@@ -36,7 +36,7 @@ const slides: Slide[] = [
       { text: "Shop Infinity", href: "/shop", primary: true },
       { text: "View Collection", href: "/shop", primary: false },
     ],
-    image: "https://images.unsplash.com/photo-1519861531473-92002639313cc?w=1920&q=80",
+    image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=1920&q=80",
   },
   {
     id: 3,
@@ -47,7 +47,7 @@ const slides: Slide[] = [
       { text: "Secure Your Spot", href: "/events", primary: true },
       { text: "View All Events", href: "/events", primary: false },
     ],
-    image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1920&q=80",
+    image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1920&q=80",
   },
 ];
 
