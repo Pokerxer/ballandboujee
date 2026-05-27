@@ -64,18 +64,30 @@ console.log('ENV KEYS:', Object.keys(process.env).join(', '));
 console.log('MONGO_URI:', MONGO_URI ? MONGO_URI.replace(/:[^:]+@/, ':****@') : 'NOT SET - undefined');
 
 // Cache connection for serverless (Vercel) warm reuse
-let cachedConn = global._mongooseConn || null;
+let connecting = null;
 
 async function connectDB() {
-  if (cachedConn && mongoose.connection.readyState === 1) return cachedConn;
-  cachedConn = await mongoose.connect(MONGO_URI, {
+  // Already connected
+  if (mongoose.connection.readyState === 1) return;
+  // Currently connecting — wait for it
+  if (mongoose.connection.readyState === 2) {
+    if (connecting) return connecting;
+    return new Promise(resolve => mongoose.connection.once('open', resolve));
+  }
+  // Connect (with retry)
+  connecting = mongoose.connect(MONGO_URI, {
     serverSelectionTimeoutMS: 30000,
     socketTimeoutMS: 45000,
+    connectTimeoutMS: 30000,
     maxPoolSize: 10,
+    bufferTimeoutMS: 60000,
   });
-  global._mongooseConn = cachedConn;
-  console.log('Connected to MongoDB');
-  return cachedConn;
+  try {
+    await connecting;
+    console.log('Connected to MongoDB');
+  } finally {
+    connecting = null;
+  }
 }
 
 // Middleware: ensure DB is connected before every request (critical for serverless)

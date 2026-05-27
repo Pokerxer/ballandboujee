@@ -25,7 +25,7 @@ interface Product {
 
 function normalizeProduct(p: any): Product {
   const images = (p.images || []).map((img: any) => (typeof img === "string" ? img : img.url)).filter(Boolean);
-  const image = images[0] || "/placeholder.jpg";
+  const image = images[0] || "/placeholder.svg";
 
   const variants = p.variants || [];
   const firstVariant = variants[0];
