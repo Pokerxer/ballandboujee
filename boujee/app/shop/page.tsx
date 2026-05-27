@@ -23,18 +23,10 @@ interface Product {
   description?: string;
 }
 
-const categories = [
-  { id: "all", label: "All Products" },
-  { id: "Female Fashion", label: "Female Fashion" },
-  { id: "Male Fashion", label: "Male Fashion" },
-  { id: "Bags & Purses", label: "Bags & Purses" },
-  { id: "Shoes", label: "Shoes" },
-  { id: "Accessories", label: "Accessories" },
-  { id: "Perfumes", label: "Perfumes" },
-  { id: "Luxury Hair", label: "Luxury Hair" },
-  { id: "Skincare", label: "Skincare" },
-  { id: "Gift Items", label: "Gift Items" },
-  { id: "Kiddies Fashion", label: "Kiddies Fashion" },
+const ALL_CATEGORIES = [
+  "Female Fashion", "Male Fashion", "Bags & Purses", "Shoes",
+  "Accessories", "Perfumes", "Luxury Hair", "Skincare",
+  "Gift Items", "Kiddies Fashion",
 ];
 
 const priceRanges = [
@@ -148,6 +140,7 @@ function Sidebar({
   onPriceRangeChange,
   activeBadges,
   onBadgesChange,
+  availableCategories,
 }: { 
   activeCategory: string;
   onCategoryChange: (category: string) => void;
@@ -155,6 +148,7 @@ function Sidebar({
   onPriceRangeChange: (range: string) => void;
   activeBadges: string[];
   onBadgesChange: (badges: string[]) => void;
+  availableCategories: string[];
 }) {
   const activeFiltersCount = [
     activeCategory !== "all",
@@ -181,17 +175,27 @@ function Sidebar({
         <div className="space-y-2">
           <FilterSection title="Category">
             <div className="space-y-1">
-              {categories.map((category) => (
+              <button
+                onClick={() => onCategoryChange("all")}
+                className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-all ${
+                  activeCategory === "all"
+                    ? "bg-accent text-background"
+                    : "text-primary hover:bg-background hover:text-accent"
+                }`}
+              >
+                <span className="font-body text-sm">All Products</span>
+              </button>
+              {availableCategories.map((category) => (
                 <button
-                  key={category.id}
-                  onClick={() => onCategoryChange(category.id)}
+                  key={category}
+                  onClick={() => onCategoryChange(category)}
                   className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-all ${
-                    activeCategory === category.id
+                    activeCategory === category
                       ? "bg-accent text-background"
                       : "text-primary hover:bg-background hover:text-accent"
                   }`}
                 >
-                  <span className="font-body text-sm">{category.label}</span>
+                  <span className="font-body text-sm">{category}</span>
                 </button>
               ))}
             </div>
@@ -274,6 +278,7 @@ function MobileFilters({
   onPriceRangeChange,
   activeBadges,
   onBadgesChange,
+  availableCategories,
 }: { 
   isOpen: boolean;
   onClose: () => void;
@@ -283,6 +288,7 @@ function MobileFilters({
   onPriceRangeChange: (range: string) => void;
   activeBadges: string[];
   onBadgesChange: (badges: string[]) => void;
+  availableCategories: string[];
 }) {
   const activeFiltersCount = [
     activeCategory !== "all",
@@ -337,17 +343,27 @@ function MobileFilters({
             <div className="p-5 space-y-2">
               <FilterSection title="Category">
                 <div className="space-y-1">
-                  {categories.map((category) => (
+                  <button
+                    onClick={() => { onCategoryChange("all"); onClose(); }}
+                    className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-all ${
+                      activeCategory === "all"
+                        ? "bg-accent text-background"
+                        : "text-primary hover:bg-surface hover:text-accent"
+                    }`}
+                  >
+                    <span className="font-body text-sm">All Products</span>
+                  </button>
+                  {availableCategories.map((category) => (
                     <button
-                      key={category.id}
-                      onClick={() => { onCategoryChange(category.id); onClose(); }}
+                      key={category}
+                      onClick={() => { onCategoryChange(category); onClose(); }}
                       className={`flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-all ${
-                        activeCategory === category.id
+                        activeCategory === category
                           ? "bg-accent text-background"
                           : "text-primary hover:bg-surface hover:text-accent"
                       }`}
                     >
-                      <span className="font-body text-sm">{category.label}</span>
+                      <span className="font-body text-sm">{category}</span>
                     </button>
                   ))}
                 </div>
@@ -944,6 +960,9 @@ export default function ShopPage() {
     setCurrentPage(1);
   }, [activeCategory, activePriceRange, activeBadges]);
 
+  const categorySet = new Set(products.map((p) => p.category).filter(Boolean));
+  const availableCategories = ALL_CATEGORIES.filter((c) => categorySet.has(c));
+
   const activeFiltersCount = [
     activeCategory !== "all",
     activePriceRange !== "all",
@@ -1098,6 +1117,7 @@ export default function ShopPage() {
         onPriceRangeChange={setActivePriceRange}
         activeBadges={activeBadges}
         onBadgesChange={setActiveBadges}
+        availableCategories={availableCategories}
       />
 
       <div className="max-w-7xl mx-auto">
@@ -1109,6 +1129,7 @@ export default function ShopPage() {
             onPriceRangeChange={setActivePriceRange}
             activeBadges={activeBadges}
             onBadgesChange={setActiveBadges}
+            availableCategories={availableCategories}
           />
 
           <div className="flex-1">
